@@ -78,7 +78,7 @@ async def recommander(
             "sort_by": "popularity.desc",
             "vote_count.gte": 100,
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             reponse = await client.get(url, params=parametres)
         donnees = reponse.json()
         liste_films = donnees.get("results", [])
@@ -94,7 +94,7 @@ async def recommander(
             "language": "fr-FR",
             "query": acteur_nom,
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             reponse = await client.get(url_recherche, params=parametres_recherche)
         donnees = reponse.json()
         personnes = donnees.get("results", [])
@@ -107,7 +107,7 @@ async def recommander(
                 "api_key": TMDB_CLE_API,
                 "language": "fr-FR",
             }
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10) as client:
                 reponse = await client.get(url_films, params=parametres_films)
             donnees_films = reponse.json()
             tous_les_films = donnees_films.get("cast", [])
