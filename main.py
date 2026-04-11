@@ -10,6 +10,15 @@ TMDB_URL_BASE = "https://api.themoviedb.org/3"
 TMDB_URL_IMAGE = "https://image.tmdb.org/t/p"
 FICHIER_BDD = "izmar.db"
 
+GENRES_DISPONIBLES = [
+    (28, "Action"),
+    (35, "Comedie"),
+    (18, "Drame"),
+    (27, "Horreur"),
+    (10749, "Romance"),
+    (53, "Thriller"),
+]
+
 app = FastAPI(title="IZMAR API", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -63,6 +72,7 @@ async def recommander(
     mode: str,
     genre_id: Optional[int] = None,
     duree_max: Optional[int] = None,
+    ambiance: Optional[str] = None,
     acteur_nom: Optional[str] = None,
 ):
     films_formates = []
@@ -75,17 +85,31 @@ async def recommander(
             "language": "fr-FR",
             "with_genres": genre_id,
             "with_runtime.lte": duree_max,
-            "sort_by": "popularity.desc",
             "vote_count.gte": 100,
         }
+
+        if ambiance == "recent":
+            parametres["sort_by"] = "primary_release_date.desc"
+        elif ambiance == "classique":
+            parametres["sort_by"] = "vote_average.desc"
+            parametres["vote_count.gte"] = 1000
+        else:
+            parametres["sort_by"] = "popularity.desc"
+
         async with httpx.AsyncClient(timeout=10) as client:
             reponse = await client.get(url, params=parametres)
         donnees = reponse.json()
         liste_films = donnees.get("results", [])
         for film in liste_films[:3]:
             films_formates.append(formater_film(film))
+
+        nom_genre = next(
+            (nom for gid, nom in GENRES_DISPONIBLES if gid == genre_id),
+            "Genre"
+        )
+        critere_lisible = f"{nom_genre} - {duree_max}min - {ambiance or 'populaire'}"
         titres = [f["titre"] for f in films_formates]
-        sauvegarder_recherche("theme", str(genre_id), titres)
+        sauvegarder_recherche("theme", critere_lisible, titres)
 
     elif mode == "acteur":
         url_recherche = f"{TMDB_URL_BASE}/search/person"
@@ -115,6 +139,6 @@ async def recommander(
             for film in films_tries[:3]:
                 films_formates.append(formater_film(film))
         titres = [f["titre"] for f in films_formates]
-        sauvegarder_recherche("acteur", acteur_nom, titres)
+        sauvegarder_recherche("acteur", f"Acteur : {acteur_trouve or acteur_nom}", titres)
 
     return {"films": films_formates, "acteur_trouve": acteur_trouve}
