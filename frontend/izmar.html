@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IZMAR - Recommandation de Films</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { background-color: #1a1a2e; min-height: 100vh; }
+        .hero-izmar { background: linear-gradient(135deg, #0f3460, #e94560); }
+        .box-sombre { background-color: #16213e; color: #ffffff; }
+        .texte-clair { color: #cccccc; }
+    </style>
+</head>
+<body>
+    <div id="racine"></div>
+    <script type="text/babel">
+        function App() {
+            const [mode, setMode] = React.useState("theme");
+            const [genre, setGenre] = React.useState("28");
+            const [duree, setDuree] = React.useState("120");
+            const [acteurNom, setActeurNom] = React.useState("");
+            const [acteurTrouve, setActeurTrouve] = React.useState(null);
+            const [films, setFilms] = React.useState([]);
+            const [chargement, setChargement] = React.useState(false);
+            const [erreur, setErreur] = React.useState(null);
+
+            async function chercherParTheme() {
+                setChargement(true); setErreur(null);
+                try {
+                    const r = await fetch("http://localhost:8000/recommander?mode=theme&genre_id=" + genre + "&duree_max=" + duree);
+                    const data = await r.json(); setFilms(data.films); setActeurTrouve(null);
+                } catch (e) { setErreur("Impossible de contacter le serveur."); }
+                setChargement(false);
+            }
+
+            async function chercherParActeur() {
+                if (acteurNom.trim() === "") return;
+                setChargement(true); setErreur(null);
+                try {
+                    const r = await fetch("http://localhost:8000/recommander?mode=acteur&acteur_nom=" + encodeURIComponent(acteurNom));
+                    const data = await r.json(); setFilms(data.films); setActeurTrouve(data.acteur_trouve);
+                } catch (e) { setErreur("Impossible de contacter le serveur."); }
+                setChargement(false);
+            }
+
+            return (
+                <div>
+                    <section className="hero is-medium hero-izmar">
+                        <div className="hero-body has-text-centered">
+                            <span className="icon is-large has-text-white"><i className="fas fa-film fa-3x"></i></span>
+                            <p className="title has-text-white mt-3">IZMAR</p>
+                            <p className="subtitle has-text-white">Trouve ton prochain film</p>
+                        </div>
+                    </section>
+                    <section className="section">
+                        <div className="container" style={{maxWidth: "600px"}}>
+                            <div className="tabs is-centered is-toggle is-toggle-rounded">
+                                <ul>
+                                    <li className={mode === "theme" ? "is-active" : ""}><a onClick={function() { setMode("theme"); setFilms([]); }}><span className="icon is-small"><i className="fas fa-theater-masks"></i></span><span>Par theme</span></a></li>
+                                    <li className={mode === "acteur" ? "is-active" : ""}><a onClick={function() { setMode("acteur"); setFilms([]); }}><span className="icon is-small"><i className="fas fa-user"></i></span><span>Par acteur</span></a></li>
+                                </ul>
+                            </div>
+                            {mode === "theme" && (
+                                <div className="box box-sombre">
+                                    <div className="field"><label className="label has-text-white">Quel genre ?</label><div className="select is-fullwidth"><select value={genre} onChange={function(e) { setGenre(e.target.value); }}><option value="28">Action</option><option value="35">Comedie</option><option value="18">Drame</option><option value="27">Horreur</option><option value="10749">Romance</option><option value="53">Thriller</option></select></div></div>
+                                    <div className="field"><label className="label has-text-white">Quelle duree max ?</label><div className="select is-fullwidth"><select value={duree} onChange={function(e) { setDuree(e.target.value); }}><option value="90">1h30</option><option value="120">2h</option><option value="180">3h</option></select></div></div>
+                                    <button className={"button is-danger is-fullwidth " + (chargement ? "is-loading" : "")} onClick={chercherParTheme} disabled={chargement}><span className="icon"><i className="fas fa-search"></i></span><span>Trouver un film</span></button>
+                                </div>
+                            )}
+                            {mode === "acteur" && (
+                                <div className="box box-sombre">
+                                    <div className="field"><label className="label has-text-white">Quel acteur ?</label><div className="field has-addons"><div className="control is-expanded"><input className="input" type="text" placeholder="Ex : Tom Hanks..." value={acteurNom} onChange={function(e) { setActeurNom(e.target.value); }} /></div><div className="control"><button className={"button is-info " + (chargement ? "is-loading" : "")} onClick={chercherParActeur} disabled={chargement}><span className="icon"><i className="fas fa-search"></i></span><span>Chercher</span></button></div></div></div>
+                                </div>
+                            )}
+                            {erreur && (<div className="notification is-danger"><span>{erreur}</span></div>)}
+                        </div>
+                    </section>
+                    <section className="section" style={{paddingTop: "0"}}>
+                        <div className="container" style={{maxWidth: "750px"}}>
+                            {films.length > 0 && acteurTrouve && (<h2 className="title is-4 has-text-white has-text-centered mb-5">Les meilleurs films avec {acteurTrouve}</h2>)}
+                            {films.length > 0 && !acteurTrouve && (<h2 className="title is-4 has-text-white has-text-centered mb-5">Mes recommandations</h2>)}
+                            {films.map(function(film, index) {
+                                return (
+                                    <div className="box box-sombre" key={index} style={{marginBottom: "20px"}}>
+                                        <div className="columns">
+                                            <div className="column is-narrow">{film.affiche && (<img src={film.affiche} alt={film.titre} style={{width: "150px", borderRadius: "5px"}} />)}</div>
+                                            <div className="column"><p className="title is-5 has-text-white">{film.titre} ({film.annee})</p><p className="texte-clair">{film.synopsis}</p></div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                    <footer className="footer" style={{backgroundColor: "#0f3460", padding: "20px"}}><div className="content has-text-centered has-text-white"><p>IZMAR — React, FastAPI, SQLite et Docker</p></div></footer>
+                </div>
+            );
+        }
+        const racine = ReactDOM.createRoot(document.getElementById("racine"));
+        racine.render(<App />);
+    </script>
+</body>
+</html>
