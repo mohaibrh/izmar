@@ -14,88 +14,136 @@
         .hero-izmar { background: linear-gradient(135deg, #0f3460, #e94560); }
         .box-sombre { background-color: #16213e; color: #ffffff; }
         .texte-clair { color: #cccccc; }
+        .carte-film:hover { box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3); }
+        .bouton-choix { margin: 5px; }
     </style>
 </head>
 <body>
     <div id="racine"></div>
     <script type="text/babel">
         function App() {
-            const [mode, setMode] = React.useState("theme");
-            const [genre, setGenre] = React.useState("28");
-            const [duree, setDuree] = React.useState("120");
+            const [page, setPage] = React.useState("accueil");
+            const [etapeTheme, setEtapeTheme] = React.useState(1);
+            const [genre, setGenre] = React.useState(null);
+            const [nomGenre, setNomGenre] = React.useState("");
+            const [ambiance, setAmbiance] = React.useState(null);
             const [acteurNom, setActeurNom] = React.useState("");
             const [acteurTrouve, setActeurTrouve] = React.useState(null);
             const [films, setFilms] = React.useState([]);
             const [chargement, setChargement] = React.useState(false);
             const [erreur, setErreur] = React.useState(null);
+            const [modeRecherche, setModeRecherche] = React.useState(null);
 
-            async function chercherParTheme() {
+            function allerA(p) { setPage(p); setErreur(null); if (p === "accueil") { setEtapeTheme(1); setGenre(null); setNomGenre(""); setAmbiance(null); setActeurNom(""); setActeurTrouve(null); setFilms([]); setModeRecherche(null); } }
+            function choisirGenre(id, nom) { setGenre(id); setNomGenre(nom); setEtapeTheme(2); }
+            function choisirAmbiance(a) { setAmbiance(a); setEtapeTheme(3); }
+
+            async function choisirDuree(d) {
                 setChargement(true); setErreur(null);
                 try {
-                    const r = await fetch("http://localhost:8000/recommander?mode=theme&genre_id=" + genre + "&duree_max=" + duree);
-                    const data = await r.json(); setFilms(data.films); setActeurTrouve(null);
+                    const r = await fetch("http://localhost:8000/recommander?mode=theme&genre_id=" + genre + "&duree_max=" + d + "&ambiance=" + ambiance);
+                    const data = await r.json(); setFilms(data.films); setModeRecherche("theme"); setPage("resultats");
                 } catch (e) { setErreur("Impossible de contacter le serveur."); }
                 setChargement(false);
             }
 
-            async function chercherParActeur() {
+            async function chercherActeur() {
                 if (acteurNom.trim() === "") return;
                 setChargement(true); setErreur(null);
                 try {
                     const r = await fetch("http://localhost:8000/recommander?mode=acteur&acteur_nom=" + encodeURIComponent(acteurNom));
-                    const data = await r.json(); setFilms(data.films); setActeurTrouve(data.acteur_trouve);
+                    const data = await r.json(); setFilms(data.films); setActeurTrouve(data.acteur_trouve); setModeRecherche("acteur"); setPage("resultats");
                 } catch (e) { setErreur("Impossible de contacter le serveur."); }
                 setChargement(false);
             }
 
             return (
                 <div>
-                    <section className="hero is-medium hero-izmar">
-                        <div className="hero-body has-text-centered">
-                            <span className="icon is-large has-text-white"><i className="fas fa-film fa-3x"></i></span>
-                            <p className="title has-text-white mt-3">IZMAR</p>
-                            <p className="subtitle has-text-white">Trouve ton prochain film</p>
-                        </div>
-                    </section>
-                    <section className="section">
-                        <div className="container" style={{maxWidth: "600px"}}>
-                            <div className="tabs is-centered is-toggle is-toggle-rounded">
-                                <ul>
-                                    <li className={mode === "theme" ? "is-active" : ""}><a onClick={function() { setMode("theme"); setFilms([]); }}><span className="icon is-small"><i className="fas fa-theater-masks"></i></span><span>Par theme</span></a></li>
-                                    <li className={mode === "acteur" ? "is-active" : ""}><a onClick={function() { setMode("acteur"); setFilms([]); }}><span className="icon is-small"><i className="fas fa-user"></i></span><span>Par acteur</span></a></li>
-                                </ul>
+                    {page === "accueil" && (<section className="hero is-medium hero-izmar"><div className="hero-body has-text-centered"><span className="icon is-large has-text-white"><i className="fas fa-film fa-3x"></i></span><p className="title has-text-white mt-3">IZMAR</p><p className="subtitle has-text-white">Trouve ton prochain film en quelques clics</p></div></section>)}
+                    <section className="section"><div className="container" style={{maxWidth: "750px"}}>
+
+                        {page === "accueil" && (
+                            <div className="box box-sombre has-text-centered">
+                                <h2 className="title is-4 has-text-white">Comment veux-tu choisir ton film ?</h2>
+                                <div className="buttons is-centered">
+                                    <button className="button is-danger is-large bouton-choix" onClick={function() { allerA("theme"); }}><span className="icon"><i className="fas fa-theater-masks"></i></span><span>Par theme</span></button>
+                                    <button className="button is-info is-large bouton-choix" onClick={function() { allerA("acteur"); }}><span className="icon"><i className="fas fa-user"></i></span><span>Par acteur</span></button>
+                                </div>
                             </div>
-                            {mode === "theme" && (
-                                <div className="box box-sombre">
-                                    <div className="field"><label className="label has-text-white">Quel genre ?</label><div className="select is-fullwidth"><select value={genre} onChange={function(e) { setGenre(e.target.value); }}><option value="28">Action</option><option value="35">Comedie</option><option value="18">Drame</option><option value="27">Horreur</option><option value="10749">Romance</option><option value="53">Thriller</option></select></div></div>
-                                    <div className="field"><label className="label has-text-white">Quelle duree max ?</label><div className="select is-fullwidth"><select value={duree} onChange={function(e) { setDuree(e.target.value); }}><option value="90">1h30</option><option value="120">2h</option><option value="180">3h</option></select></div></div>
-                                    <button className={"button is-danger is-fullwidth " + (chargement ? "is-loading" : "")} onClick={chercherParTheme} disabled={chargement}><span className="icon"><i className="fas fa-search"></i></span><span>Trouver un film</span></button>
+                        )}
+
+                        {page === "theme" && etapeTheme === 1 && (
+                            <div className="box box-sombre has-text-centered">
+                                <h2 className="title is-4 has-text-white">Quel genre de film ?</h2><p className="texte-clair mb-5">Etape 1 sur 3</p>
+                                <div className="buttons is-centered">
+                                    <button className="button is-warning is-medium bouton-choix" onClick={function() { choisirGenre(28, "Action"); }}>Action</button>
+                                    <button className="button is-success is-medium bouton-choix" onClick={function() { choisirGenre(35, "Comedie"); }}>Comedie</button>
+                                    <button className="button is-dark is-medium bouton-choix" onClick={function() { choisirGenre(27, "Horreur"); }}>Horreur</button>
+                                    <button className="button is-danger is-medium bouton-choix" onClick={function() { choisirGenre(10749, "Romance"); }}>Romance</button>
+                                    <button className="button is-info is-medium bouton-choix" onClick={function() { choisirGenre(18, "Drame"); }}>Drame</button>
+                                    <button className="button is-link is-medium bouton-choix" onClick={function() { choisirGenre(53, "Thriller"); }}>Thriller</button>
                                 </div>
-                            )}
-                            {mode === "acteur" && (
-                                <div className="box box-sombre">
-                                    <div className="field"><label className="label has-text-white">Quel acteur ?</label><div className="field has-addons"><div className="control is-expanded"><input className="input" type="text" placeholder="Ex : Tom Hanks..." value={acteurNom} onChange={function(e) { setActeurNom(e.target.value); }} /></div><div className="control"><button className={"button is-info " + (chargement ? "is-loading" : "")} onClick={chercherParActeur} disabled={chargement}><span className="icon"><i className="fas fa-search"></i></span><span>Chercher</span></button></div></div></div>
+                            </div>
+                        )}
+
+                        {page === "theme" && etapeTheme === 2 && (
+                            <div className="box box-sombre has-text-centered">
+                                <h2 className="title is-4 has-text-white">Plutot recent ou classique ?</h2><p className="texte-clair mb-5">Etape 2 sur 3 — <span className="tag is-danger">{nomGenre}</span></p>
+                                <div className="buttons is-centered">
+                                    <button className="button is-info is-medium bouton-choix" onClick={function() { choisirAmbiance("recent"); }}>Recent</button>
+                                    <button className="button is-warning is-medium bouton-choix" onClick={function() { choisirAmbiance("classique"); }}>Classique</button>
                                 </div>
-                            )}
-                            {erreur && (<div className="notification is-danger"><span>{erreur}</span></div>)}
-                        </div>
-                    </section>
-                    <section className="section" style={{paddingTop: "0"}}>
-                        <div className="container" style={{maxWidth: "750px"}}>
-                            {films.length > 0 && acteurTrouve && (<h2 className="title is-4 has-text-white has-text-centered mb-5">Les meilleurs films avec {acteurTrouve}</h2>)}
-                            {films.length > 0 && !acteurTrouve && (<h2 className="title is-4 has-text-white has-text-centered mb-5">Mes recommandations</h2>)}
-                            {films.map(function(film, index) {
-                                return (
-                                    <div className="box box-sombre" key={index} style={{marginBottom: "20px"}}>
-                                        <div className="columns">
-                                            <div className="column is-narrow">{film.affiche && (<img src={film.affiche} alt={film.titre} style={{width: "150px", borderRadius: "5px"}} />)}</div>
-                                            <div className="column"><p className="title is-5 has-text-white">{film.titre} ({film.annee})</p><p className="texte-clair">{film.synopsis}</p></div>
+                            </div>
+                        )}
+
+                        {page === "theme" && etapeTheme === 3 && (
+                            <div className="box box-sombre has-text-centered">
+                                <h2 className="title is-4 has-text-white">Quelle duree maximum ?</h2><p className="texte-clair mb-5">Etape 3 sur 3 — <span className="tag is-danger">{nomGenre}</span> · <span className="tag is-info">{ambiance === "recent" ? "Recent" : "Classique"}</span></p>
+                                <div className="buttons is-centered">
+                                    <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(90); }} disabled={chargement}>1h30</button>
+                                    <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(120); }} disabled={chargement}>2h</button>
+                                    <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(180); }} disabled={chargement}>3h</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {page === "acteur" && (
+                            <div className="box box-sombre has-text-centered">
+                                <h2 className="title is-4 has-text-white">Quel est ton acteur prefere ?</h2>
+                                <div className="field has-addons has-addons-centered">
+                                    <div className="control is-expanded"><input className="input is-medium" type="text" placeholder="Ex : Tom Hanks..." value={acteurNom} onChange={function(e) { setActeurNom(e.target.value); }} /></div>
+                                    <div className="control"><button className={"button is-info is-medium " + (chargement ? "is-loading" : "")} onClick={chercherActeur} disabled={chargement}>Chercher</button></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {erreur && (<div className="notification is-danger mt-4">{erreur}</div>)}
+
+                        {page === "resultats" && (
+                            <div>
+                                <h2 className="title is-4 has-text-white has-text-centered mb-5">
+                                    {modeRecherche === "acteur" && acteurTrouve && (<span>Les meilleurs films avec {acteurTrouve}</span>)}
+                                    {modeRecherche === "theme" && (<span>Recommandations en {nomGenre}</span>)}
+                                </h2>
+                                {films.map(function(film, index) {
+                                    return (
+                                        <div className="box box-sombre carte-film" key={index} style={{marginBottom: "20px"}}>
+                                            <div className="columns">
+                                                <div className="column is-narrow">{film.affiche && (<img src={film.affiche} alt={film.titre} style={{width: "150px", borderRadius: "5px"}} />)}</div>
+                                                <div className="column">
+                                                    <p className="title is-5 has-text-white">{film.titre}</p>
+                                                    <div className="tags"><span className="tag is-dark">{film.annee}</span><span className="tag is-warning">{film.note}/10</span></div>
+                                                    <p className="texte-clair">{film.synopsis}</p>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </section>
+                                    );
+                                })}
+                                <div className="has-text-centered mt-5"><button className="button is-warning is-medium" onClick={function() { allerA("accueil"); }}>Nouvelle recherche</button></div>
+                            </div>
+                        )}
+
+                    </div></section>
                     <footer className="footer" style={{backgroundColor: "#0f3460", padding: "20px"}}><div className="content has-text-centered has-text-white"><p>IZMAR — React, FastAPI, SQLite et Docker</p></div></footer>
                 </div>
             );
