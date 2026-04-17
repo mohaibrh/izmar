@@ -1,5 +1,6 @@
 import sqlite3
 import json
+import random
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
@@ -19,7 +20,7 @@ GENRES_DISPONIBLES = [
     (53, "Thriller"),
 ]
 
-app = FastAPI(title="IZMAR API", version="1.0.0")
+app = FastAPI(title="IZMAR API", version="1.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -142,3 +143,35 @@ async def recommander(
         sauvegarder_recherche("acteur", f"Acteur : {acteur_trouve or acteur_nom}", titres)
 
     return {"films": films_formates, "acteur_trouve": acteur_trouve}
+
+
+@app.get("/surprise")
+async def surprise():
+    genre_id, nom_genre = random.choice(GENRES_DISPONIBLES)
+    page_aleatoire = random.randint(1, 5)
+
+    url = f"{TMDB_URL_BASE}/discover/movie"
+    parametres = {
+        "api_key": TMDB_CLE_API,
+        "language": "fr-FR",
+        "with_genres": genre_id,
+        "vote_count.gte": 500,
+        "sort_by": "popularity.desc",
+        "page": page_aleatoire,
+    }
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        reponse = await client.get(url, params=parametres)
+
+    donnees = reponse.json()
+    liste_films = donnees.get("results", [])
+    random.shuffle(liste_films)
+
+    films_formates = []
+    for film in liste_films[:3]:
+        films_formates.append(formater_film(film))
+
+    titres = [f["titre"] for f in films_formates]
+    sauvegarder_recherche("surprise", f"Surprise : {nom_genre}", titres)
+
+    return {"films": films_formates, "genre_pioche": nom_genre}

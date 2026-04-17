@@ -33,6 +33,16 @@
             const [chargement, setChargement] = React.useState(false);
             const [erreur, setErreur] = React.useState(null);
             const [modeRecherche, setModeRecherche] = React.useState(null);
+            const [genrePioche, setGenrePioche] = React.useState(null);
+
+            async function lancerSurprise() {
+                setChargement(true); setErreur(null);
+                try {
+                    const r = await fetch("http://localhost:8000/surprise");
+                    const data = await r.json(); setFilms(data.films); setGenrePioche(data.genre_pioche); setModeRecherche("surprise"); setPage("resultats");
+                } catch (e) { setErreur("Impossible de contacter le serveur."); }
+                setChargement(false);
+            }
 
             function allerA(p) { setPage(p); setErreur(null); if (p === "accueil") { setEtapeTheme(1); setGenre(null); setNomGenre(""); setAmbiance(null); setActeurNom(""); setActeurTrouve(null); setFilms([]); setModeRecherche(null); } }
             function choisirGenre(id, nom) { setGenre(id); setNomGenre(nom); setEtapeTheme(2); }
@@ -68,6 +78,7 @@
                                 <div className="buttons is-centered">
                                     <button className="button is-danger is-large bouton-choix" onClick={function() { allerA("theme"); }}><span className="icon"><i className="fas fa-theater-masks"></i></span><span>Par theme</span></button>
                                     <button className="button is-info is-large bouton-choix" onClick={function() { allerA("acteur"); }}><span className="icon"><i className="fas fa-user"></i></span><span>Par acteur</span></button>
+                                    <button className="button is-warning is-large bouton-choix" onClick={lancerSurprise}><span className="icon"><i className="fas fa-dice"></i></span><span>Surprise</span></button>
                                 </div>
                             </div>
                         )}
@@ -124,6 +135,7 @@
                                 <h2 className="title is-4 has-text-white has-text-centered mb-5">
                                     {modeRecherche === "acteur" && acteurTrouve && (<span>Les meilleurs films avec {acteurTrouve}</span>)}
                                     {modeRecherche === "theme" && (<span>Recommandations en {nomGenre}</span>)}
+                                    {modeRecherche === "surprise" && (<span>Surprise ! Genre pioche : {genrePioche}</span>)}
                                 </h2>
                                 {films.map(function(film, index) {
                                     return (
