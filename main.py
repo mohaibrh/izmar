@@ -63,8 +63,10 @@ async def recommander(
     mode: str,
     genre_id: Optional[int] = None,
     duree_max: Optional[int] = None,
+    acteur_nom: Optional[str] = None,
 ):
     films_formates = []
+    acteur_trouve = None
 
     if mode == "theme":
         url = f"{TMDB_URL_BASE}/discover/movie"
@@ -85,4 +87,34 @@ async def recommander(
         titres = [f["titre"] for f in films_formates]
         sauvegarder_recherche("theme", str(genre_id), titres)
 
-    return {"films": films_formates}
+    elif mode == "acteur":
+        url_recherche = f"{TMDB_URL_BASE}/search/person"
+        parametres_recherche = {
+            "api_key": TMDB_CLE_API,
+            "language": "fr-FR",
+            "query": acteur_nom,
+        }
+        async with httpx.AsyncClient() as client:
+            reponse = await client.get(url_recherche, params=parametres_recherche)
+        donnees = reponse.json()
+        personnes = donnees.get("results", [])
+        if len(personnes) > 0:
+            acteur = personnes[0]
+            acteur_trouve = acteur["name"]
+            acteur_id = acteur["id"]
+            url_films = f"{TMDB_URL_BASE}/person/{acteur_id}/movie_credits"
+            parametres_films = {
+                "api_key": TMDB_CLE_API,
+                "language": "fr-FR",
+            }
+            async with httpx.AsyncClient() as client:
+                reponse = await client.get(url_films, params=parametres_films)
+            donnees_films = reponse.json()
+            tous_les_films = donnees_films.get("cast", [])
+            films_tries = sorted(tous_les_films, key=lambda f: f.get("popularity", 0), reverse=True)
+            for film in films_tries[:3]:
+                films_formates.append(formater_film(film))
+        titres = [f["titre"] for f in films_formates]
+        sauvegarder_recherche("acteur", acteur_nom, titres)
+
+    return {"films": films_formates, "acteur_trouve": acteur_trouve}
