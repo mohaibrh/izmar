@@ -2,157 +2,189 @@
 <html lang="fr">
 <head>
     <!-- Les réglages de base de ma page -->
-    <!-- Ici, je dis au navigateur de bien comprendre les accents comme é, à, ç -->
     <meta charset="UTF-8" />
-    <!-- Là, je m'assure que mon site s'affiche bien sur téléphone, sans qu'on ait besoin de zoomer -->
+    <!-- Je m'assure que le site s'affiche parfaitement sur téléphone -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IZMAR - Recommandation de Films</title>
     
-    <!-- Pour faire un joli site rapidement, j'utilise "Bulma". C'est un fichier qui contient des décorations toutes prêtes (des beaux boutons, des belles couleurs) -->
+    <!-- J'importe la police "Poppins" depuis Google Fonts pour donner un look beaucoup plus moderne à mon texte -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- J'utilise Bulma, c'est une boîte à outils visuelle qui me donne des jolis boutons et une bonne structure sans tout coder de zéro -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
-    <!-- Ça, c'est juste pour pouvoir utiliser des petites icônes (comme la pellicule de film) -->
+    <!-- Ça me permet d'afficher des petites icônes sympa (comme les étoiles pour les notes) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
-    <!-- J'ajoute "React". C'est le moteur de mon site. Ça me permet de changer ce qu'il y a à l'écran sans jamais avoir besoin de recharger la page -->
+    <!-- J'ajoute "React", c'est le moteur interactif de mon site. Babel est là pour traduire mon code afin que le navigateur le lise sans problème -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel est un "traducteur". Il permet au navigateur de comprendre mon code React -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Quelques couleurs personnalisées pour donner une ambiance "cinéma" sombre à mon site -->
+    <!-- Voici mon propre design personnalisé pour peaufiner l'apparence -->
     <style>
-        body { background-color: #1a1a2e; min-height: 100vh; }
-        .hero-izmar { background: linear-gradient(135deg, #0f3460, #e94560); }
-        .box-sombre { background-color: #16213e; color: #ffffff; }
+        /* J'applique ma nouvelle police sur tout le site et je mets une couleur de fond bleu nuit */
+        body { 
+            background-color: #1a1a2e; 
+            min-height: 100vh; 
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        /* Le bandeau d'accueil avec un beau dégradé de couleurs */
+        .hero-izmar { 
+            background: linear-gradient(135deg, #0f3460, #e94560); 
+        }
+        
+        /* Je crée des boîtes de contenu avec des bords doux (arrondis) pour que ce soit agréable à l'œil */
+        .box-sombre { 
+            background-color: #16213e; 
+            color: #ffffff; 
+            border-radius: 15px; 
+            border: 1px solid #2a3a5e;
+        }
+        
         .texte-clair { color: #cccccc; }
-        .carte-film:hover { box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3); }
-        .bouton-choix { margin: 5px; }
+        
+        /* J'arrondis aussi mes boutons de choix */
+        .bouton-choix { 
+            margin: 5px; 
+            border-radius: 8px; 
+        }
+        
+        /* L'effet magique quand on passe la souris sur un film : la carte remonte un peu avec une petite ombre */
+        .carte-film {
+            transition: all 0.3s ease;
+        }
+        .carte-film:hover { 
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.4);
+            transform: translateY(-5px); 
+        }
+        
+        /* Je force toutes les affiches de films à avoir la même taille, le 'cover' permet de couper l'image proprement si besoin */
+        .affiche-film {
+            width: 120px;
+            height: 180px;
+            object-fit: cover; 
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
-    <!-- C'est ici que mon site va s'afficher. C'est une boîte vide que React va remplir tout seul. -->
+    <!-- C'est dans cette boîte vide que mon code React va venir "dessiner" tout le site -->
     <div id="racine"></div>
     
     <script type="text/babel">
         
-        // C'est la grande fonction qui contient tout mon site
+        // La grande fonction App qui contient toute la logique de mon interface
         function App() {
             
-            // --- LA MÉMOIRE DE MON SITE ---
-            // J'utilise "useState" pour créer des cases mémoire. 
-            // La magie de React, c'est que si je change ce qu'il y a dans une de ces cases, 
-            // l'écran se met à jour tout seul pour afficher la nouveauté.
+            // --- LA MÉMOIRE DE MON SITE (LES ÉTATS) ---
             
-            // Je retiens sur quelle page on se trouve. Au début, on est à l'"accueil"
+            // Je retiens sur quelle page l'utilisateur se trouve
             const [page, setPage] = React.useState("accueil"); 
-            // Si l'utilisateur choisit par thème, je retiens à quelle question il en est (1, 2 ou 3)
+            // S'il cherche par thème, je retiens à quelle question il en est (1, 2 ou 3)
             const [etapeTheme, setEtapeTheme] = React.useState(1); 
             
-            // Je mémorise les choix de l'utilisateur quand il clique sur des boutons
+            // Je mémorise les choix qu'il fait en cliquant sur les boutons
             const [genre, setGenre] = React.useState(null); 
             const [nomGenre, setNomGenre] = React.useState(""); 
             const [ambiance, setAmbiance] = React.useState(null); 
             
-            // Je mémorise ce qu'il tape au clavier quand il cherche un acteur
+            // Je mémorise le nom de l'acteur tapé au clavier
             const [acteurNom, setActeurNom] = React.useState(""); 
             const [acteurTrouve, setActeurTrouve] = React.useState(null); 
             
-            // C'est ici que je rangerai la liste des films que le serveur va me donner
+            // C'est ici que je stockerai la liste des films renvoyés par mon serveur Python
             const [films, setFilms] = React.useState([]); 
-            
-            // Je retiens si le site est "en train de chercher" pour afficher une animation d'attente
+            // Je retiens si on est en train de chercher (pour afficher un logo d'attente)
             const [chargement, setChargement] = React.useState(false); 
-            // Si le serveur a un problème, je mémorise le message d'erreur ici
+            // Pour mémoriser et afficher un message si le serveur a un problème
             const [erreur, setErreur] = React.useState(null); 
             
-            // Je retiens comment on a cherché (par "theme", "acteur" ou "surprise")
+            // Je retiens la méthode de recherche utilisée pour adapter le titre des résultats
             const [modeRecherche, setModeRecherche] = React.useState(null); 
             const [genrePioche, setGenrePioche] = React.useState(null); 
 
 
-            // --- LES ACTIONS (QUAND ON PARLE AU SERVEUR) ---
+            // --- LES ACTIONS (QUAND MON SITE PARLE AU SERVEUR) ---
 
-            // Fonction pour le bouton "Surprise"
+            // Fonction pour lancer une recherche au hasard
             async function lancerSurprise() {
-                setChargement(true); // Je dis au site "Affiche que tu cherches"
-                setErreur(null); // J'efface les vieilles erreurs
-                
+                setChargement(true); setErreur(null);
                 try {
-                    // Je pose une question à mon serveur (mon programme en python). 
-                    // Le mot "await" veut dire : "Attends que le serveur réponde avant de continuer le code".
+                    // Je pose la question à mon API locale et j'attends sa réponse (await)
                     const reponse = await fetch("http://localhost:8000/surprise");
-                    // Je traduis la réponse du serveur pour que mon site la comprenne
                     const donnees = await reponse.json(); 
                     
-                    // Je range ce que le serveur m'a donné dans la mémoire de mon site
+                    // Je range les résultats dans ma mémoire et j'affiche la page des résultats
                     setFilms(donnees.films); 
                     setGenrePioche(donnees.genre_pioche); 
                     setModeRecherche("surprise"); 
-                    // Et je dis au site de changer de page pour afficher les résultats
                     setPage("resultats"); 
-                } catch (e) { 
-                    // Si mon serveur est éteint, je mets un message d'erreur dans la mémoire
-                    setErreur("Impossible de contacter le serveur."); 
-                }
-                setChargement(false); // Je dis au site "C'est bon, la recherche est finie"
+                } catch (e) { setErreur("Impossible de contacter le serveur."); }
+                setChargement(false);
             }
 
-            // Fonction pour changer d'écran ou revenir à l'accueil
+            // Fonction pour se déplacer dans les menus et remettre les compteurs à zéro si on retourne à l'accueil
             function allerA(nouvellePage) { 
-                setPage(nouvellePage); 
-                setErreur(null); 
-                // Si on retourne à l'accueil, je vide toutes les mémoires pour repartir de zéro
+                setPage(nouvellePage); setErreur(null); 
                 if (nouvellePage === "accueil") { 
                     setEtapeTheme(1); setGenre(null); setNomGenre(""); setAmbiance(null); 
                     setActeurNom(""); setActeurTrouve(null); setFilms([]); setModeRecherche(null); 
                 } 
             }
             
-            // Les fonctions quand on clique sur les boutons de Thème
-            // Quand on choisit un genre, je le mémorise et je passe à la question 2
+            // J'enregistre le choix de la question 1 et je passe à la 2
             function choisirGenre(id, nom) { setGenre(id); setNomGenre(nom); setEtapeTheme(2); }
-            // Quand on choisit l'époque, je la mémorise et je passe à la question 3
+            // J'enregistre le choix de la question 2 et je passe à la 3
             function choisirAmbiance(a) { setAmbiance(a); setEtapeTheme(3); }
 
-            // Quand on clique sur la durée, c'est la fin du questionnaire : j'interroge le serveur
+            // Fin du questionnaire : j'envoie tous les critères au serveur
             async function choisirDuree(duree) {
                 setChargement(true); setErreur(null);
                 try {
-                    // Je crée un lien avec tous les choix que l'utilisateur a faits, et je l'envoie au serveur
                     const reponse = await fetch("http://localhost:8000/recommander?mode=theme&genre_id=" + genre + "&duree_max=" + duree + "&ambiance=" + ambiance);
                     const donnees = await reponse.json(); 
-                    
                     setFilms(donnees.films); setModeRecherche("theme"); setPage("resultats");
                 } catch (e) { setErreur("Impossible de contacter le serveur."); }
                 setChargement(false);
             }
 
-            // Fonction quand on clique sur "Chercher" pour un acteur
+            // Je demande au serveur de trouver les films de l'acteur tapé
             async function chercherActeur() {
-                // Si la case texte est vide, j'arrête tout, ça ne sert à rien de chercher
+                // Si la case est vide, on annule l'action
                 if (acteurNom.trim() === "") return;
-                
                 setChargement(true); setErreur(null);
                 try {
-                    // J'envoie le nom tapé au clavier à mon serveur
+                    // encodeURIComponent protège la recherche (s'il y a des espaces dans le nom par exemple)
                     const reponse = await fetch("http://localhost:8000/recommander?mode=acteur&acteur_nom=" + encodeURIComponent(acteurNom));
                     const donnees = await reponse.json(); 
-                    
                     setFilms(donnees.films); setActeurTrouve(donnees.acteur_trouve); setModeRecherche("acteur"); setPage("resultats");
                 } catch (e) { setErreur("Impossible de contacter le serveur."); }
                 setChargement(false);
             }
 
-            // --- L'AFFICHAGE (CE QU'ON VOIT A L'ECRAN) ---
+
+            // --- CE QUE L'ON VOIT À L'ÉCRAN ---
             return (
                 <div>
-                    {/* Le grand titre du haut. Je dis "Si on est sur l'accueil, alors affiche le titre" */}
+                    {/* LE BANDEAU D'ACCUEIL : Je l'affiche uniquement si la variable page dit "accueil" */}
                     {page === "accueil" && (
                         <section className="hero is-medium hero-izmar">
                             <div className="hero-body has-text-centered">
-                                <span className="icon is-large has-text-white"><i className="fas fa-film fa-3x"></i></span>
-                                <p className="title has-text-white mt-3">IZMAR</p>
-                                <p className="subtitle has-text-white">Trouve ton prochain film en quelques clics</p>
+                                {/* J'ai mis une belle image d'illustration ici. Le lien peut être remplacé par une image locale comme "./mon-image.jpg" */}
+                                <img 
+                                    src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" 
+                                    alt="Logo IZMAR" 
+                                    style={{
+                                        width: "150px", 
+                                        borderRadius: "20px", 
+                                        marginBottom: "15px", 
+                                        boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
+                                    }} 
+                                />
+                                <p className="title has-text-white" style={{fontWeight: 600, fontSize: "3rem"}}>IZMAR</p>
+                                <p className="subtitle has-text-white mt-2">Trouve ton prochain film en quelques clics</p>
                             </div>
                         </section>
                     )}
@@ -161,7 +193,6 @@
                         <div className="container" style={{maxWidth: "750px"}}>
 
                             {/* LE MENU PRINCIPAL */}
-                            {/* Les signes "&&" veulent dire "Si la page est 'accueil', affiche le bloc HTML qui suit" */}
                             {page === "accueil" && (
                                 <div className="box box-sombre has-text-centered">
                                     <h2 className="title is-4 has-text-white">Comment veux-tu choisir ton film ?</h2>
@@ -173,12 +204,12 @@
                                 </div>
                             )}
 
-                            {/* LA PAGE THEME : QUESTION 1 */}
+                            {/* LA PAGE THÈME : QUESTION 1 */}
                             {page === "theme" && etapeTheme === 1 && (
                                 <div className="box box-sombre has-text-centered">
                                     <h2 className="title is-4 has-text-white">Quel genre de film ?</h2>
                                     <div className="buttons is-centered">
-                                        {/* Quand je clique, ça mémorise le chiffre (qui est le code du genre pour mon serveur) et le mot */}
+                                        {/* J'envoie l'identifiant secret de TMDB (ex: 28 pour Action) et le vrai nom */}
                                         <button className="button is-warning is-medium bouton-choix" onClick={function() { choisirGenre(28, "Action"); }}>Action</button>
                                         <button className="button is-success is-medium bouton-choix" onClick={function() { choisirGenre(35, "Comédie"); }}>Comédie</button>
                                         <button className="button is-dark is-medium bouton-choix" onClick={function() { choisirGenre(27, "Horreur"); }}>Horreur</button>
@@ -189,10 +220,9 @@
                                 </div>
                             )}
 
-                            {/* LA PAGE THEME : QUESTION 2 */}
+                            {/* LA PAGE THÈME : QUESTION 2 */}
                             {page === "theme" && etapeTheme === 2 && (
                                 <div className="box box-sombre has-text-centered">
-                                    {/* Les accolades {nomGenre} permettent d'écrire le texte que j'ai mémorisé juste avant */}
                                     <h2 className="title is-4 has-text-white">Plutôt récent ou classique ? ({nomGenre})</h2>
                                     <div className="buttons is-centered">
                                         <button className="button is-info is-medium bouton-choix" onClick={function() { choisirAmbiance("recent"); }}>Récent</button>
@@ -201,59 +231,63 @@
                                 </div>
                             )}
 
-                            {/* LA PAGE THEME : QUESTION 3 */}
+                            {/* LA PAGE THÈME : QUESTION 3 */}
                             {page === "theme" && etapeTheme === 3 && (
                                 <div className="box box-sombre has-text-centered">
                                     <h2 className="title is-4 has-text-white">Quelle durée maximum ?</h2>
                                     <div className="buttons is-centered">
-                                        {/* Quand je clique, la fonction choisirDuree lance la recherche finale */}
-                                        <button className="button is-primary is-medium bouton-choix" onClick={function() { choisirDuree(90); }}>1h30</button>
-                                        <button className="button is-primary is-medium bouton-choix" onClick={function() { choisirDuree(120); }}>2h</button>
-                                        <button className="button is-primary is-medium bouton-choix" onClick={function() { choisirDuree(180); }}>3h</button>
+                                        {/* Si 'chargement' est vrai, le bouton affiche un symbole de chargement grâce à la classe 'is-loading' */}
+                                        <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(90); }} disabled={chargement}>1h30</button>
+                                        <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(120); }} disabled={chargement}>2h</button>
+                                        <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(180); }} disabled={chargement}>3h</button>
                                     </div>
                                 </div>
                             )}
 
-                            {/* LA PAGE RECHERCHE PAR ACTEUR */}
+                            {/* LA PAGE DE RECHERCHE PAR ACTEUR */}
                             {page === "acteur" && (
                                 <div className="box box-sombre has-text-centered">
                                     <h2 className="title is-4 has-text-white">Quel est ton acteur préféré ?</h2>
                                     <div className="field has-addons has-addons-centered">
-                                        {/* Quand je tape au clavier, le "onChange" lit les lettres et les sauvegarde dans ma mémoire */}
                                         <div className="control is-expanded"><input className="input is-medium" type="text" placeholder="Ex : Tom Hanks..." value={acteurNom} onChange={function(e) { setActeurNom(e.target.value); }} /></div>
-                                        <div className="control"><button className="button is-info is-medium" onClick={chercherActeur}>Chercher</button></div>
+                                        <div className="control"><button className={"button is-info is-medium " + (chargement ? "is-loading" : "")} onClick={chercherActeur} disabled={chargement}>Chercher</button></div>
                                     </div>
                                 </div>
                             )}
 
-                            {/* SI LE SERVEUR BUG, J'AFFICHE ÇA */}
-                            {erreur && (<div className="notification is-danger mt-4">{erreur}</div>)}
+                            {/* AFFICHAGE DES ERREURS SERVEUR */}
+                            {erreur && (<div className="notification is-danger mt-4" style={{borderRadius: "10px"}}>{erreur}</div>)}
 
-                            {/* L'AFFICHAGE DES RESULTATS FINAUX */}
+                            {/* LA PAGE DES RÉSULTATS */}
                             {page === "resultats" && (
                                 <div>
                                     <h2 className="title is-4 has-text-white has-text-centered mb-5">Voici les résultats !</h2>
                                     
-                                    {/* Je prends mon tableau de films et pour CHAQUE film, je dessine ce bloc visuel */}
+                                    {/* Je prends mon tableau de films et je génère un bloc HTML pour chacun d'entre eux */}
                                     {films.map(function(film, index) {
                                         return (
                                             <div className="box box-sombre carte-film" key={index} style={{marginBottom: "20px"}}>
-                                                <div className="columns">
-                                                    {/* J'affiche l'image du film (l'affiche) */}
-                                                    <div className="column is-narrow"><img src={film.affiche} alt={film.titre} style={{width: "150px", borderRadius: "5px"}} /></div>
+                                                <div className="columns is-vcentered">
+                                                    {/* J'applique ma classe affiche-film pour harmoniser les tailles d'images */}
+                                                    <div className="column is-narrow has-text-centered">
+                                                        {film.affiche && (<img src={film.affiche} alt={film.titre} className="affiche-film" />)}
+                                                    </div>
                                                     <div className="column">
-                                                        {/* J'affiche le titre, l'année, la note et l'histoire du film */}
-                                                        <p className="title is-5 has-text-white">{film.titre}</p>
-                                                        <div className="tags"><span className="tag is-dark">{film.annee}</span><span className="tag is-warning">{film.note}/10</span></div>
-                                                        <p className="texte-clair">{film.synopsis}</p>
+                                                        <p className="title is-5 has-text-white" style={{fontWeight: 600}}>{film.titre}</p>
+                                                        <div className="tags">
+                                                            <span className="tag is-dark is-medium">{film.annee}</span>
+                                                            {/* J'ajoute une petite étoile devant la note */}
+                                                            <span className="tag is-warning is-medium"><i className="fas fa-star mr-1"></i> {film.note}/10</span>
+                                                        </div>
+                                                        <p className="texte-clair mt-2">{film.synopsis}</p>
                                                     </div>
                                                 </div>
                                             </div>
                                         );
                                     })}
                                     
-                                    {/* Le bouton pour faire une nouvelle recherche */}
-                                    <div className="has-text-centered mt-5"><button className="button is-warning is-medium" onClick={function() { allerA("accueil"); }}>Nouvelle recherche</button></div>
+                                    {/* Bouton pour relancer l'expérience */}
+                                    <div className="has-text-centered mt-5"><button className="button is-warning is-medium bouton-choix" style={{borderRadius: "30px", padding: "0 30px"}} onClick={function() { allerA("accueil"); }}>Nouvelle recherche</button></div>
                                 </div>
                             )}
 
@@ -263,9 +297,9 @@
             );
         }
         
-        // C'est l'ordre final : "Prends tout ce que je viens de créer au-dessus (App), et colle-le sur la page HTML"
+        // Commande finale : on dit à React de dessiner tout ce qu'on vient de définir à l'intérieur de notre balise racine
         const racine = ReactDOM.createRoot(document.getElementById("racine"));
         racine.render(<App />);
     </script>
 </body>
-</html> 
+</html>
