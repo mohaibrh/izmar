@@ -1,303 +1,451 @@
 <!DOCTYPE html>
-<html lang="fr">
+
+<html lang="fr" style="height: 100%;">
+    
 <head>
-    <!-- Les réglages de base de ma page -->
     <meta charset="UTF-8" />
-    <!-- Je m'assure que le site s'affiche parfaitement sur téléphone -->
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>IZMAR - Recommandation de Films</title>
     
-    <!-- J'importe la police "Poppins" depuis Google Fonts pour donner un look beaucoup plus moderne à mon texte -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     
-    <!-- J'utilise Bulma, c'est une boîte à outils visuelle qui me donne des jolis boutons et une bonne structure sans tout coder de zéro -->
+    <link rel="stylesheet" href="style.css">
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
-    <!-- Ça me permet d'afficher des petites icônes sympa (comme les étoiles pour les notes) -->
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
-    <!-- J'ajoute "React", c'est le moteur interactif de mon site. Babel est là pour traduire mon code afin que le navigateur le lise sans problème -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Voici mon propre design personnalisé pour peaufiner l'apparence -->
-    <style>
-        /* J'applique ma nouvelle police sur tout le site et je mets une couleur de fond bleu nuit */
-        body { 
-            background-color: #1a1a2e; 
-            min-height: 100vh; 
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        /* Le bandeau d'accueil avec un beau dégradé de couleurs */
-        .hero-izmar { 
-            background: linear-gradient(135deg, #0f3460, #e94560); 
-        }
-        
-        /* Je crée des boîtes de contenu avec des bords doux (arrondis) pour que ce soit agréable à l'œil */
-        .box-sombre { 
-            background-color: #16213e; 
-            color: #ffffff; 
-            border-radius: 15px; 
-            border: 1px solid #2a3a5e;
-        }
-        
-        .texte-clair { color: #cccccc; }
-        
-        /* J'arrondis aussi mes boutons de choix */
-        .bouton-choix { 
-            margin: 5px; 
-            border-radius: 8px; 
-        }
-        
-        /* L'effet magique quand on passe la souris sur un film : la carte remonte un peu avec une petite ombre */
-        .carte-film {
-            transition: all 0.3s ease;
-        }
-        .carte-film:hover { 
-            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.4);
-            transform: translateY(-5px); 
-        }
-        
-        /* Je force toutes les affiches de films à avoir la même taille, le 'cover' permet de couper l'image proprement si besoin */
-        .affiche-film {
-            width: 120px;
-            height: 180px;
-            object-fit: cover; 
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-    </style>
 </head>
-<body>
-    <!-- C'est dans cette boîte vide que mon code React va venir "dessiner" tout le site -->
-    <div id="racine"></div>
+
+<body style="height: 100%;">
+
+    <div id="racine" style="height: 100%;"></div>
     
     <script type="text/babel">
         
-        // La grande fonction App qui contient toute la logique de mon interface
+        // Notre composant principal, c'est lui qui gère TOUT le site
         function App() {
             
-            // --- LA MÉMOIRE DE MON SITE (LES ÉTATS) ---
+         
+            // LE CARNET DE NOTES DU SITE (LES STATES)
+            // Un "state" c'est une variable spéciale :
+            // quand elle change, React redessine automatiquement la page.
+            // C'est le super pouvoir de React !
             
-            // Je retiens sur quelle page l'utilisateur se trouve
+
+            // Sur quelle page on est ? Par défaut on arrive sur l'accueil
             const [page, setPage] = React.useState("accueil"); 
-            // S'il cherche par thème, je retiens à quelle question il en est (1, 2 ou 3)
+
+            // Pour la recherche par thème, on pose 3 questions une par une.
+            // etapeTheme dit à quelle question on en est (1, 2 ou 3)
             const [etapeTheme, setEtapeTheme] = React.useState(1); 
-            
-            // Je mémorise les choix qu'il fait en cliquant sur les boutons
+
+            // L'ID du genre choisi (28 = Action, 35 = Comédie, etc.)
+            // C'est l'ID que l'API TMDB utilise pour retrouver les films
             const [genre, setGenre] = React.useState(null); 
+
+            // Le nom du genre choisi en français, juste pour l'afficher à l'écran
             const [nomGenre, setNomGenre] = React.useState(""); 
+
+            // "recent" ou "classique" - la réponse à la question 2 du thème
             const [ambiance, setAmbiance] = React.useState(null); 
-            
-            // Je mémorise le nom de l'acteur tapé au clavier
+
+            // Ce que l'utilisateur tape dans le champ "nom d'acteur"
             const [acteurNom, setActeurNom] = React.useState(""); 
-            const [acteurTrouve, setActeurTrouve] = React.useState(null); 
-            
-            // C'est ici que je stockerai la liste des films renvoyés par mon serveur Python
+
+            // La liste des films renvoyée par le serveur, vide au départ
             const [films, setFilms] = React.useState([]); 
-            // Je retiens si on est en train de chercher (pour afficher un logo d'attente)
+
+            // true quand on attend la réponse du serveur → les boutons se bloquent
             const [chargement, setChargement] = React.useState(false); 
-            // Pour mémoriser et afficher un message si le serveur a un problème
+
+            // Si quelque chose foire, on met le message d'erreur ici pour l'afficher
             const [erreur, setErreur] = React.useState(null); 
-            
-            // Je retiens la méthode de recherche utilisée pour adapter le titre des résultats
-            const [modeRecherche, setModeRecherche] = React.useState(null); 
-            const [genrePioche, setGenrePioche] = React.useState(null); 
 
 
-            // --- LES ACTIONS (QUAND MON SITE PARLE AU SERVEUR) ---
+            // =============================================
+            // LES FONCTIONS (CE QUI SE PASSE QUAND ON CLIQUE)
+            // =============================================
 
-            // Fonction pour lancer une recherche au hasard
+            // Bouton "Surprise" : on demande un film au hasard au serveur
+            // "async" = cette fonction peut attendre une réponse (elle est pas pressée)
             async function lancerSurprise() {
-                setChargement(true); setErreur(null);
+                setChargement(true);  // On bloque les boutons pendant qu'on attend
+                setErreur(null);      // On efface l'ancienne erreur si y'en avait une
                 try {
-                    // Je pose la question à mon API locale et j'attends sa réponse (await)
+                    // "fetch" = on envoie une requête à notre serveur Python
+                    // "await" = on attend la réponse avant de continuer
                     const reponse = await fetch("http://localhost:8000/surprise");
-                    const donnees = await reponse.json(); 
-                    
-                    // Je range les résultats dans ma mémoire et j'affiche la page des résultats
-                    setFilms(donnees.films); 
-                    setGenrePioche(donnees.genre_pioche); 
-                    setModeRecherche("surprise"); 
-                    setPage("resultats"); 
-                } catch (e) { setErreur("Impossible de contacter le serveur."); }
-                setChargement(false);
+                    const donnees = await reponse.json(); // On convertit la réponse en objet JS
+                    setFilms(donnees.films);  // On sauvegarde les films reçus
+                    setPage("resultats");     // Et on bascule sur la page résultats
+                } catch (e) {
+                    // Si ça plante (serveur éteint, pas de réseau...) on affiche un message
+                    setErreur("Impossible de contacter le serveur.");
+                }
+                setChargement(false); // Quoi qu'il arrive, on débloque les boutons à la fin
             }
 
-            // Fonction pour se déplacer dans les menus et remettre les compteurs à zéro si on retourne à l'accueil
+            // Changer de page + remettre à zéro les données si on retourne à l'accueil
             function allerA(nouvellePage) { 
-                setPage(nouvellePage); setErreur(null); 
+                setPage(nouvellePage);
+                setErreur(null); // On efface les erreurs en changeant de page
                 if (nouvellePage === "accueil") { 
-                    setEtapeTheme(1); setGenre(null); setNomGenre(""); setAmbiance(null); 
-                    setActeurNom(""); setActeurTrouve(null); setFilms([]); setModeRecherche(null); 
+                    // Si on revient à l'accueil, on remet tout à zéro
+                    // pour que la prochaine recherche reparte de zéro
+                    setEtapeTheme(1);
+                    setGenre(null);
+                    setFilms([]); 
                 } 
             }
             
-            // J'enregistre le choix de la question 1 et je passe à la 2
-            function choisirGenre(id, nom) { setGenre(id); setNomGenre(nom); setEtapeTheme(2); }
-            // J'enregistre le choix de la question 2 et je passe à la 3
-            function choisirAmbiance(a) { setAmbiance(a); setEtapeTheme(3); }
+            // Quand on clique sur un genre (ex: Action)
+            // On sauvegarde l'ID et le nom, et on passe à l'étape suivante
+            function choisirGenre(id, nom) {
+                setGenre(id);
+                setNomGenre(nom);
+                setEtapeTheme(2); // → on passe à la question "récent ou classique ?"
+            }
 
-            // Fin du questionnaire : j'envoie tous les critères au serveur
+            // Quand on choisit "récent" ou "classique"
+            // On sauvegarde et on passe à la dernière question
+            function choisirAmbiance(a) {
+                setAmbiance(a);
+                setEtapeTheme(3); // → on passe à la question "combien de temps t'as ?"
+            }
+
+            // Quand on choisit une durée (1h30 / 2h / 3h)
+            // C'est la dernière étape : on envoie tout au serveur et on attend les films
             async function choisirDuree(duree) {
-                setChargement(true); setErreur(null);
+                setChargement(true);
+                setErreur(null);
                 try {
-                    const reponse = await fetch("http://localhost:8000/recommander?mode=theme&genre_id=" + genre + "&duree_max=" + duree + "&ambiance=" + ambiance);
-                    const donnees = await reponse.json(); 
-                    setFilms(donnees.films); setModeRecherche("theme"); setPage("resultats");
-                } catch (e) { setErreur("Impossible de contacter le serveur."); }
+                    // On construit l'URL avec tous nos critères dedans
+                    // genre_id, duree_max, ambiance → le serveur va filtrer les films avec ça
+                    const reponse = await fetch(`http://localhost:8000/recommander?mode=theme&genre_id=${genre}&duree_max=${duree}&ambiance=${ambiance}`);
+                    const donnees = await reponse.json();
+                    setFilms(donnees.films);
+                    setPage("resultats");
+                } catch (e) {
+                    setErreur("Erreur serveur.");
+                }
                 setChargement(false);
             }
 
-            // Je demande au serveur de trouver les films de l'acteur tapé
+            // Quand on clique "Chercher" sur la page acteur
             async function chercherActeur() {
-                // Si la case est vide, on annule l'action
+                // Si le champ est vide, on fait rien (trim() enlève les espaces)
                 if (acteurNom.trim() === "") return;
-                setChargement(true); setErreur(null);
+                setChargement(true);
+                setErreur(null);
                 try {
-                    // encodeURIComponent protège la recherche (s'il y a des espaces dans le nom par exemple)
-                    const reponse = await fetch("http://localhost:8000/recommander?mode=acteur&acteur_nom=" + encodeURIComponent(acteurNom));
-                    const donnees = await reponse.json(); 
-                    setFilms(donnees.films); setActeurTrouve(donnees.acteur_trouve); setModeRecherche("acteur"); setPage("resultats");
-                } catch (e) { setErreur("Impossible de contacter le serveur."); }
+                    // encodeURIComponent = transforme les espaces et accents pour l'URL
+                    // ex: "Tom Hanks" devient "Tom%20Hanks" dans l'URL
+                    const reponse = await fetch(`http://localhost:8000/recommander?mode=acteur&acteur_nom=${encodeURIComponent(acteurNom)}`);
+                    const donnees = await reponse.json();
+                    setFilms(donnees.films);
+                    setPage("resultats");
+                } catch (e) {
+                    setErreur("Impossible de trouver cet acteur.");
+                }
                 setChargement(false);
             }
 
 
-            // --- CE QUE L'ON VOIT À L'ÉCRAN ---
+            // =============================================
+            // LE DESSIN DU SITE (CE QUI S'AFFICHE À L'ÉCRAN)
+            // C'est du JSX : ça ressemble à du HTML mais c'est du JS
+            // React traduit tout ça en vraie page web
+            // =============================================
             return (
-                <div>
-                    {/* LE BANDEAU D'ACCUEIL : Je l'affiche uniquement si la variable page dit "accueil" */}
-                    {page === "accueil" && (
-                        <section className="hero is-medium hero-izmar">
-                            <div className="hero-body has-text-centered">
-                                {/* J'ai mis une belle image d'illustration ici. Le lien peut être remplacé par une image locale comme "./mon-image.jpg" */}
-                                <img 
-                                    src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" 
-                                    alt="Logo IZMAR" 
-                                    style={{
-                                        width: "150px", 
-                                        borderRadius: "20px", 
-                                        marginBottom: "15px", 
-                                        boxShadow: "0 8px 20px rgba(0,0,0,0.4)"
-                                    }} 
-                                />
-                                <p className="title has-text-white" style={{fontWeight: 600, fontSize: "3rem"}}>IZMAR</p>
-                                <p className="subtitle has-text-white mt-2">Trouve ton prochain film en quelques clics</p>
-                            </div>
-                        </section>
-                    )}
+                // La grande boîte qui contient TOUT le site
+                // flex + column = les éléments s'empilent verticalement
+                // minHeight 100vh = au minimum ça prend toute la hauteur de l'écran
+                <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
                     
-                    <section className="section">
-                        <div className="container" style={{maxWidth: "750px"}}>
+                    {/* =============================================
+                        LA BARRE DE NAVIGATION EN HAUT
+                        Elle est toujours visible quelle que soit la page
+                    ============================================= */}
+                    <nav className="navbar" style={{background: "rgba(22, 33, 62, 0.95)", borderBottom: "2px solid #e94560", minHeight: "3.5rem"}}>
+                        <div className="container" style={{maxWidth: "900px"}}>
 
-                            {/* LE MENU PRINCIPAL */}
-                            {page === "accueil" && (
-                                <div className="box box-sombre has-text-centered">
-                                    <h2 className="title is-4 has-text-white">Comment veux-tu choisir ton film ?</h2>
-                                    <div className="buttons is-centered">
-                                        <button className="button is-danger is-large bouton-choix" onClick={function() { allerA("theme"); }}>Par thème</button>
-                                        <button className="button is-info is-large bouton-choix" onClick={function() { allerA("acteur"); }}>Par acteur</button>
-                                        <button className="button is-warning is-large bouton-choix" onClick={lancerSurprise}>Surprise</button>
+                            {/* Le logo IZMAR à gauche qui ramène à l'accueil au clic */}
+                            <div className="navbar-brand">
+                                <a className="navbar-item" onClick={() => allerA("accueil")} style={{cursor: "pointer", padding: "0.5rem 1rem"}}>
+                                    <span style={{fontFamily: "'Bebas Neue', cursive", color: "white", fontSize: "1.5rem", letterSpacing: "2px"}}>IZMAR</span>
+                                </a>
+                            </div>
+
+                            {/* Les 3 liens à droite dans le menu */}
+                            <div className="navbar-menu is-active" style={{background: "transparent", boxShadow: "none"}}>
+                                <div className="navbar-end">
+                                    {/* () => allerA("theme") = une petite fonction flèche,
+                                        c'est pareil que function() { allerA("theme"); }
+                                        mais en plus court, les devs adorent ça */}
+                                    <a className="navbar-item has-text-white" onClick={() => allerA("theme")}>Thèmes</a>
+                                    <a className="navbar-item has-text-white" onClick={() => allerA("acteur")}>Acteurs</a>
+                                    {/* Celui-là est en jaune et gras parce que c'est le bouton spécial */}
+                                    <a className="navbar-item has-text-warning" onClick={lancerSurprise} style={{fontWeight: "bold"}}>Surprise</a>
+                                </div>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* =============================================
+                        LE CONTENU QUI CHANGE SELON LA PAGE
+                        flex: 1 = cette zone prend tout l'espace disponible
+                        pour que le footer reste bien collé en bas
+                    ============================================= */}
+                    <div style={{ flex: 1 }}>
+
+                        {/* =============================================
+                            PAGE D'ACCUEIL
+                            Le && c'est une astuce React :
+                            "si page vaut 'accueil' ET ALORS affiche ce bloc"
+                            Si c'est faux, React affiche rien du tout
+                        ============================================= */}
+                        {page === "accueil" && (
+                            <section className="hero is-fullheight-with-navbar hero-accueil">
+                                <div className="hero-body">
+                                    <div className="container has-text-centered">
+                                        
+                                        {/* Le giga titre IZMAR, fontSize 8rem = vraiment énorme */}
+                                        <h1 className="title has-text-white" style={{fontFamily: "'Bebas Neue', cursive", fontSize: "8rem", fontWeight: "900", letterSpacing: "8px", textShadow: "4px 4px 20px rgba(0,0,0,0.9)", marginBottom: "0"}}>
+                                            IZMAR
+                                        </h1>
+                                        {/* Le slogan en dessous */}
+                                        <p className="subtitle has-text-white is-size-4 mt-3">
+                                            Trouve ton prochain film en quelques clics
+                                        </p>
+                                        
+                                        {/* La petite carte avec les 3 boutons de départ */}
+                                        <div className="box" style={{marginTop: "10vh", background: "rgba(22, 33, 62, 0.8)", border: "none", borderRadius: "20px", display: "inline-block", padding: "2rem"}}>
+                                            <h2 className="title is-5 has-text-white mb-4" style={{fontFamily: "'Poppins', sans-serif", letterSpacing: "normal"}}>On regarde quoi aujourd'hui ?</h2>
+                                            <div className="buttons is-centered">
+                                                {/* Bouton rouge → cherche par genre de film */}
+                                                <button className="button is-danger is-large bouton-choix" onClick={() => allerA("theme")}>Par thème</button>
+                                                {/* Bouton bleu → cherche par acteur favori */}
+                                                <button className="button is-info is-large bouton-choix" onClick={() => allerA("acteur")}>Par acteur</button>
+                                                {/* Bouton jaune → choisit un film complètement au hasard */}
+                                                <button className="button is-warning is-large bouton-choix" onClick={lancerSurprise}>Surprise</button>
+                                            </div>
+                                        </div>
+
+                                        {/* La petite flèche vers le bas avec une animation bounce (elle rebondit)
+                                            C'est une icône Font Awesome, pas une vraie image */}
+                                        <div className="mt-6 bounce">
+                                            <i className="fas fa-chevron-down has-text-white is-size-3"></i>
+                                        </div>
                                     </div>
                                 </div>
-                            )}
+                            </section>
+                        )}
 
-                            {/* LA PAGE THÈME : QUESTION 1 */}
-                            {page === "theme" && etapeTheme === 1 && (
-                                <div className="box box-sombre has-text-centered">
-                                    <h2 className="title is-4 has-text-white">Quel genre de film ?</h2>
-                                    <div className="buttons is-centered">
-                                        {/* J'envoie l'identifiant secret de TMDB (ex: 28 pour Action) et le vrai nom */}
-                                        <button className="button is-warning is-medium bouton-choix" onClick={function() { choisirGenre(28, "Action"); }}>Action</button>
-                                        <button className="button is-success is-medium bouton-choix" onClick={function() { choisirGenre(35, "Comédie"); }}>Comédie</button>
-                                        <button className="button is-dark is-medium bouton-choix" onClick={function() { choisirGenre(27, "Horreur"); }}>Horreur</button>
-                                        <button className="button is-danger is-medium bouton-choix" onClick={function() { choisirGenre(10749, "Romance"); }}>Romance</button>
-                                        <button className="button is-info is-medium bouton-choix" onClick={function() { choisirGenre(18, "Drame"); }}>Drame</button>
-                                        <button className="button is-link is-medium bouton-choix" onClick={function() { choisirGenre(53, "Thriller"); }}>Thriller</button>
-                                    </div>
+                        {/* =============================================
+                            TOUTES LES AUTRES PAGES (sauf l'accueil)
+                            On est ici pour : theme, acteur, resultats
+                        ============================================= */}
+                        {page !== "accueil" && (
+                            <section className="section">
+                                
+                                {/* Le titre IZMAR en plus petit qui réapparaît en haut */}
+                                <div className="container has-text-centered mb-5">
+                                    <h1 className="title has-text-white" style={{fontFamily: "'Bebas Neue', cursive", fontSize: "4rem", letterSpacing: "5px", textShadow: "2px 2px 10px rgba(0,0,0,0.5)"}}>
+                                        IZMAR
+                                    </h1>
                                 </div>
-                            )}
 
-                            {/* LA PAGE THÈME : QUESTION 2 */}
-                            {page === "theme" && etapeTheme === 2 && (
-                                <div className="box box-sombre has-text-centered">
-                                    <h2 className="title is-4 has-text-white">Plutôt récent ou classique ? ({nomGenre})</h2>
-                                    <div className="buttons is-centered">
-                                        <button className="button is-info is-medium bouton-choix" onClick={function() { choisirAmbiance("recent"); }}>Récent</button>
-                                        <button className="button is-warning is-medium bouton-choix" onClick={function() { choisirAmbiance("classique"); }}>Classique</button>
-                                    </div>
-                                </div>
-                            )}
+                                {/* maxWidth 750px = la page ne s'étale pas trop large sur grand écran */}
+                                <div className="container" style={{maxWidth: "750px"}}>
 
-                            {/* LA PAGE THÈME : QUESTION 3 */}
-                            {page === "theme" && etapeTheme === 3 && (
-                                <div className="box box-sombre has-text-centered">
-                                    <h2 className="title is-4 has-text-white">Quelle durée maximum ?</h2>
-                                    <div className="buttons is-centered">
-                                        {/* Si 'chargement' est vrai, le bouton affiche un symbole de chargement grâce à la classe 'is-loading' */}
-                                        <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(90); }} disabled={chargement}>1h30</button>
-                                        <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(120); }} disabled={chargement}>2h</button>
-                                        <button className={"button is-primary is-medium bouton-choix " + (chargement ? "is-loading" : "")} onClick={function() { choisirDuree(180); }} disabled={chargement}>3h</button>
-                                    </div>
-                                </div>
-                            )}
+                                    {/* La petite flèche retour en haut à gauche */}
+                                    <button className="button is-ghost has-text-white mb-4" onClick={() => allerA("accueil")}>
+                                        <i className="fas fa-arrow-left mr-2"></i> Retour au menu
+                                    </button>
 
-                            {/* LA PAGE DE RECHERCHE PAR ACTEUR */}
-                            {page === "acteur" && (
-                                <div className="box box-sombre has-text-centered">
-                                    <h2 className="title is-4 has-text-white">Quel est ton acteur préféré ?</h2>
-                                    <div className="field has-addons has-addons-centered">
-                                        <div className="control is-expanded"><input className="input is-medium" type="text" placeholder="Ex : Tom Hanks..." value={acteurNom} onChange={function(e) { setActeurNom(e.target.value); }} /></div>
-                                        <div className="control"><button className={"button is-info is-medium " + (chargement ? "is-loading" : "")} onClick={chercherActeur} disabled={chargement}>Chercher</button></div>
-                                    </div>
-                                </div>
-                            )}
+                                    {/* =============================================
+                                        THÈME ÉTAPE 1 : CHOIX DU GENRE
+                                        On vérifie DEUX conditions à la fois :
+                                        on doit être sur "theme" ET à l'étape 1
+                                    ============================================= */}
+                                    {page === "theme" && etapeTheme === 1 && (
+                                        <div className="box has-text-centered" style={{marginTop: "5vh", background: "rgba(22, 33, 62, 0.85)", border: "none", borderRadius: "20px", padding: "2rem"}}>
+                                            <h2 className="title is-4 has-text-white mb-5" style={{fontFamily: "'Poppins', sans-serif"}}>Quel genre de film ?</h2>
 
-                            {/* AFFICHAGE DES ERREURS SERVEUR */}
-                            {erreur && (<div className="notification is-danger mt-4" style={{borderRadius: "10px"}}>{erreur}</div>)}
+                                            {/* is-multiline = les cartes passent à la ligne si besoin
+                                                is-mobile = la grille fonctionne aussi sur téléphone */}
+                                            <div className="columns is-multiline is-mobile is-centered">
 
-                            {/* LA PAGE DES RÉSULTATS */}
-                            {page === "resultats" && (
-                                <div>
-                                    <h2 className="title is-4 has-text-white has-text-centered mb-5">Voici les résultats !</h2>
-                                    
-                                    {/* Je prends mon tableau de films et je génère un bloc HTML pour chacun d'entre eux */}
-                                    {films.map(function(film, index) {
-                                        return (
-                                            <div className="box box-sombre carte-film" key={index} style={{marginBottom: "20px"}}>
-                                                <div className="columns is-vcentered">
-                                                    {/* J'applique ma classe affiche-film pour harmoniser les tailles d'images */}
-                                                    <div className="column is-narrow has-text-centered">
-                                                        {film.affiche && (<img src={film.affiche} alt={film.titre} className="affiche-film" />)}
+                                                {/* is-half-mobile = 2 cartes par ligne sur mobile
+                                                    is-one-third-tablet = 3 cartes par ligne sur tablette/ordi */}
+                                                <div className="column is-half-mobile is-one-third-tablet">
+                                                    {/* Au clic → choisirGenre avec l'ID TMDB et le nom affiché */}
+                                                    <div className="carte-theme" onClick={() => choisirGenre(28, "Action")}>
+                                                        <img className="carte-theme-fond" src="https://images.unsplash.com/photo-1498887960847-2a5e46312788?w=500&q=80" alt="Action" />
+                                                        <span className="carte-theme-texte">Action</span>
                                                     </div>
-                                                    <div className="column">
-                                                        <p className="title is-5 has-text-white" style={{fontWeight: 600}}>{film.titre}</p>
-                                                        <div className="tags">
-                                                            <span className="tag is-dark is-medium">{film.annee}</span>
-                                                            {/* J'ajoute une petite étoile devant la note */}
-                                                            <span className="tag is-warning is-medium"><i className="fas fa-star mr-1"></i> {film.note}/10</span>
-                                                        </div>
-                                                        <p className="texte-clair mt-2">{film.synopsis}</p>
+                                                </div>
+                                                <div className="column is-half-mobile is-one-third-tablet">
+                                                    <div className="carte-theme" onClick={() => choisirGenre(35, "Comédie")}>
+                                                        <img className="carte-theme-fond" src="https://images.unsplash.com/photo-1585647347384-2593bc35786b?w=500&q=80" alt="Comédie" />
+                                                        <span className="carte-theme-texte">Comédie</span>
+                                                    </div>
+                                                </div>
+                                                <div className="column is-half-mobile is-one-third-tablet">
+                                                    <div className="carte-theme" onClick={() => choisirGenre(27, "Horreur")}>
+                                                        <img className="carte-theme-fond" src="https://images.unsplash.com/photo-1505635552518-3448ff116af3?w=500&q=80" alt="Horreur" />
+                                                        <span className="carte-theme-texte">Horreur</span>
+                                                    </div>
+                                                </div>
+                                                <div className="column is-half-mobile is-one-third-tablet">
+                                                    <div className="carte-theme" onClick={() => choisirGenre(10749, "Romance")}>
+                                                        <img className="carte-theme-fond" src="https://images.unsplash.com/photo-1474552226712-ac0f0961a954?w=500&q=80" alt="Romance" />
+                                                        <span className="carte-theme-texte">Romance</span>
+                                                    </div>
+                                                </div>
+                                                <div className="column is-half-mobile is-one-third-tablet">
+                                                    <div className="carte-theme" onClick={() => choisirGenre(18, "Drame")}>
+                                                        <img className="carte-theme-fond" src="https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&q=80" alt="Drame" />
+                                                        <span className="carte-theme-texte">Drame</span>
+                                                    </div>
+                                                </div>
+                                                <div className="column is-half-mobile is-one-third-tablet">
+                                                    <div className="carte-theme" onClick={() => choisirGenre(53, "Thriller")}>
+                                                        <img className="carte-theme-fond" src="https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500&q=80" alt="Thriller" />
+                                                        <span className="carte-theme-texte">Thriller</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                    
-                                    {/* Bouton pour relancer l'expérience */}
-                                    <div className="has-text-centered mt-5"><button className="button is-warning is-medium bouton-choix" style={{borderRadius: "30px", padding: "0 30px"}} onClick={function() { allerA("accueil"); }}>Nouvelle recherche</button></div>
-                                </div>
-                            )}
+                                        </div>
+                                    )}
 
-                        </div>
-                    </section>
+                                    {/* =============================================
+                                        THÈME ÉTAPE 2 : RÉCENT OU CLASSIQUE ?
+                                    ============================================= */}
+                                    {page === "theme" && etapeTheme === 2 && (
+                                        <div className="box box-sombre has-text-centered">
+                                            <h2 className="title is-4 has-text-black" style={{fontFamily: "'Poppins', sans-serif"}}>Récent ou classique ?</h2>
+                                            <div className="buttons is-centered mt-4">
+                                                {/* choisirAmbiance("recent") → sauvegarde le choix et passe à l'étape 3 */}
+                                                <button className="button is-info is-medium bouton-choix" onClick={() => choisirAmbiance("recent")}>Récent</button>
+                                                <button className="button is-warning is-medium bouton-choix" onClick={() => choisirAmbiance("classique")}>Classique</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* =============================================
+                                        THÈME ÉTAPE 3 : COMBIEN DE TEMPS ?
+                                        C'est la dernière question avant d'avoir les films
+                                    ============================================= */}
+                                    {page === "theme" && etapeTheme === 3 && (
+                                        <div className="box box-sombre has-text-centered">
+                                            <h2 className="title is-4 has-text-black" style={{fontFamily: "'Poppins', sans-serif"}}>Combien de temps t'as devant toi?</h2>
+                                            <div className="buttons is-centered mt-4">
+                                                {/* Les backticks `` permettent d'écrire du JS dans la string
+                                                    ${chargement ? "is-loading" : ""} = si ça charge → ajoute la classe is-loading
+                                                    disabled={chargement} = le bouton est grisé pendant qu'on attend */}
+                                                <button className={`button is-primary is-medium bouton-choix ${chargement ? "is-loading" : ""}`} onClick={() => choisirDuree(90)} disabled={chargement}>1h30</button>
+                                                <button className={`button is-primary is-medium bouton-choix ${chargement ? "is-loading" : ""}`} onClick={() => choisirDuree(120)} disabled={chargement}>2h</button>
+                                                <button className={`button is-primary is-medium bouton-choix ${chargement ? "is-loading" : ""}`} onClick={() => choisirDuree(180)} disabled={chargement}>3h</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* =============================================
+                                        PAGE ACTEUR : champ texte + bouton chercher
+                                    ============================================= */}
+                                    {page === "acteur" && (
+                                        <div className="box box-sombre has-text-centered">
+                                            <h2 className="title is-4 has-text-black mb-4" style={{fontFamily: "'Poppins', sans-serif"}}>Un acteur préféré ?</h2>
+                                            <div className="field has-addons has-addons-centered">
+                                                <div className="control is-expanded">
+                                                    {/* value={acteurNom} = l'input affiche toujours ce qui est dans le state
+                                                        onChange = à chaque lettre tapée, on met à jour acteurNom */}
+                                                    <input className="input is-medium" type="text" placeholder="Ex : Tom Hanks..." value={acteurNom} onChange={(e) => setActeurNom(e.target.value)} />
+                                                </div>
+                                                <div className="control">
+                                                    {/* Même logique de chargement que pour les boutons de durée */}
+                                                    <button className={`button is-info is-medium ${chargement ? "is-loading" : ""}`} onClick={chercherActeur} disabled={chargement}>Chercher</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* =============================================
+                                        PAGE RÉSULTATS : la liste des films trouvés
+                                    ============================================= */}
+                                    {page === "resultats" && (
+                                        <div>
+                                            <h2 className="title is-4 has-text-white has-text-centered mb-5" style={{fontFamily: "'Poppins', sans-serif"}}>Voici les résultats !</h2>
+
+                                            {/* .map() = on parcourt chaque film du tableau et on crée une carte
+                                                (film, index) = film c'est les données, index c'est son numéro (0, 1, 2...)
+                                                key={index} = React en a besoin pour suivre quels éléments ont changé */}
+                                            {films.map((film, index) => (
+                                                <div className="box box-sombre carte-film" key={index} style={{marginBottom: "20px"}}>
+                                                    <div className="columns is-vcentered">
+
+                                                        {/* Colonne gauche : l'affiche du film
+                                                            On l'affiche seulement si elle existe (film.affiche && ...) */}
+                                                        <div className="column is-narrow has-text-centered">
+                                                            {film.affiche && <img src={film.affiche} alt={film.titre} className="affiche-film" />}
+                                                        </div>
+
+                                                        {/* Colonne droite : titre, année, note, synopsis */}
+                                                        <div className="column">
+                                                            <p className="title is-5 has-text-black" style={{fontFamily: "'Poppins', sans-serif"}}>{film.titre}</p>
+                                                            {/* Les petits badges colorés */}
+                                                            <div className="tags">
+                                                                <span className="tag is-dark">{film.annee}</span>
+                                                                {/* L'étoile vient de Font Awesome */}
+                                                                <span className="tag is-warning"><i className="fas fa-star mr-1"></i> {film.note}/10</span>
+                                                            </div>
+                                                            {/* Le résumé du film, fourni par l'API */}
+                                                            <p className="texte-clair mt-2">{film.synopsis}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {/* Bouton pour repartir de zéro */}
+                                            <div className="has-text-centered mt-5">
+                                                <button className="button is-warning is-medium bouton-choix" onClick={() => allerA("accueil")}>Nouvelle recherche</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Le message d'erreur en rouge, affiché seulement si erreur n'est pas null
+                                        On l'a mis ici en dernier pour qu'il apparaisse sous n'importe quelle page */}
+                                    {erreur && <div className="notification is-danger mt-4">{erreur}</div>}
+                                </div>
+                            </section>
+                        )}
+                    </div>
+
+                    {/* =============================================
+                        LE FOOTER : le bas de page pour faire pro
+                        marginTop: auto le colle tout en bas même si la page est courte
+                    ============================================= */}
+                    <footer style={{ background: "#16213e", padding: "1.5rem", borderTop: "2px solid #e94560", textAlign: "center", marginTop: "auto" }}>
+                        <p className="texte-clair is-size-6">
+                            <strong>IZMAR</strong> - Projet de 1ère année<br/>
+                            <span style={{ fontSize: "0.85rem", opacity: 0.7 }}>Développé avec React et Bulma</span>
+                        </p>
+                    </footer>
                 </div>
             );
         }
         
-        // Commande finale : on dit à React de dessiner tout ce qu'on vient de définir à l'intérieur de notre balise racine
+        // La dernière ligne importante de tout le fichier :
+        // On dit à React "prends la boîte avec l'id 'racine' dans le HTML
+        // et dessine-y notre composant App()"
+        // Sans ça, le site resterait une page blanche
         const racine = ReactDOM.createRoot(document.getElementById("racine"));
         racine.render(<App />);
     </script>

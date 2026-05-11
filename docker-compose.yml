@@ -1,18 +1,13 @@
-# Mon fichier d'orchestration Docker.
-# Pratique pour lancer le front et le back en une seule commande (docker-compose up),
-# sans avoir besoin d'installer Python ou Node sur la machine qui fait tourner le projet.
 services:
 
-  # Mon conteneur pour le serveur (l'API)
   backend:
-    build: . # Il va compiler l'image à partir du Dockerfile qui est à la racine
+    build: . 
     ports:
-      - "8000:8000" # Je dis : "Ce qui tape sur le port 8000 de mon PC va dans le port 8000 du conteneur"
+      - "8000:8000"
 
-  # Mon conteneur pour l'interface web
   frontend:
-    build: ./frontend # Celui-ci utilise le Dockerfile qui est dans le dossier frontend
+    build: ./frontend 
     ports:
-      - "8080:80" # Je mets mon interface sur le port 8080 de mon PC (qui tape sur le 80 du conteneur web)
+      - "8080:80"
     depends_on:
-      - backend # J'oblige Docker à démarrer le backend avant le frontend pour éviter les bugs au lancement
+      - backend
